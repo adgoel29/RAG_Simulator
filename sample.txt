@@ -1,0 +1,7 @@
+Python is a programming language.
+
+Machine learning is a branch of artificial intelligence.
+
+FAISS is used for vector similarity search.
+
+Embeddings convert text into numerical vectors.
