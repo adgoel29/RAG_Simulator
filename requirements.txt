@@ -1,3 +1,6 @@
 sentence-transformers
 faiss-cpu
 numpy
+langchain
+langchain_core
+langchan_community
