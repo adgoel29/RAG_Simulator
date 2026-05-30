@@ -3,6 +3,7 @@ import faiss
 import numpy as np
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
+from search import SearchEngine
 class RagClass:
     def __init__(self,model_name):
         self.vectorstore = None
@@ -17,6 +18,13 @@ class RagClass:
     def search(self, query, topk=5):
         if self.vectorstore is None:
             raise ValueError("Index not built. Call ingest() first.")
-        docs = self.vectorstore.similarity_search_with_score(query, k=topk)
-        # return docs
-        return [doc.page_content for doc,scores in docs]
+        search = SearchEngine(self.vectorstore)
+        method = input(
+            "Choose search method (similarity(1) / mmr(2)): "
+        ).strip().lower()
+
+        docs = search.search(
+            query=query,
+            method=method
+        )
+        return docs
