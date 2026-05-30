@@ -3,4 +3,4 @@ faiss-cpu
 numpy
 langchain
 langchain_core
-langchan_community
+langchain_community
