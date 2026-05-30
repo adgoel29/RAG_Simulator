@@ -5,10 +5,10 @@ import numpy as np
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import HuggingFaceEmbeddings
 class RagClass:
-    def __init__(self):
+    def __init__(self,model_name):
         self.vectorstore = None
         self.embeddings = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2"
+            model_name=model_name#"sentence-transformers/all-MiniLM-L6-v2"
         )
     def ingest(self, chunks):
         self.vectorstore = FAISS.from_texts(
