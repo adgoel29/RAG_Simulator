@@ -14,9 +14,3 @@ class RagClass:
             texts=chunks,
             embedding=self.embeddings
         )
-    def search(self, query, topk=5):
-        if self.vectorstore is None:
-            raise ValueError("Index not built. Call ingest() first.")
-        docs = self.vectorstore.similarity_search_with_score(query, k=topk)
-        # return docs
-        return [doc.page_content for doc in docs]
