@@ -19,4 +19,4 @@ class RagClass:
             raise ValueError("Index not built. Call ingest() first.")
         docs = self.vectorstore.similarity_search_with_score(query, k=topk)
         # return docs
-        return [doc.page_content for doc in docs]
+        return [doc.page_content for doc,scores in docs]
