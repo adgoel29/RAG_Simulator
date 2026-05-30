@@ -1,7 +1,6 @@
 from sentence_transformers import SentenceTransformer
 import faiss
 import numpy as np
-import numpy as np
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 class RagClass:
