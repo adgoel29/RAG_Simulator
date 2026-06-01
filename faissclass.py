@@ -13,24 +13,23 @@ class RagClass:
             model_name=model_name#"sentence-transformers/all-MiniLM-L6-v2"
         )
         self.tochunk=chunk(self.embeddings)
+        self.tosearch=None
     def ingest(self, chunks):
         self.vectorstore = FAISS.from_texts(
             texts=chunks,
             embedding=self.embeddings
         )
-    def search(self, query, topk=5):
+    def searching(self, query,method, topk=5):
         if self.vectorstore is None:
             raise ValueError("Index not built. Call ingest() first.")
-        search = SearchEngine(self.vectorstore)
-        method = input(
-            "Choose search method (similarity(1) / mmr(2)): "
-        ).strip().lower()
-
-        docs = search.search(
+        self.tosearch = SearchEngine(self.vectorstore)
+        docs = self.tosearch.search_rag(
             query=query,
+            topk=topk,
             method=method
         )
         return docs
+    
     def chunking(self,path,method,**kwargs):
         with open(path,'r',encoding="utf-8") as f:
             con=f.read()
@@ -42,6 +41,7 @@ class RagClass:
         else:
             pass
         return chunks
+    
     def rerank(self,query,docs,topk=3,model_name=None):
         if not query or not docs or not model_name:
             raise ValueError("query,docs and model_name are required")
