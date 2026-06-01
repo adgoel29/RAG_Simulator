@@ -1,11 +1,12 @@
 from faissclass import RagClass
-from chunking import chunking
+# from chunking import chunking
 from sentence_transformers import SentenceTransformer
 from search import SearchEngine
-path="sample_text.txt"
+path="sample.txt"
 model = SentenceTransformer("all-MiniLM-L6-v2")
 test=RagClass("all-MiniLM-L6-v2")
-chunk=chunking(path)
+chunk=test.chunking(path,"semantic")
+print(chunk)
 test.ingest(chunk)
 query = input("Enter query: ")
 ans = test.search(query)
