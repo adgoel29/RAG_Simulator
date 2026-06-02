@@ -13,4 +13,4 @@ class SearchEngine:
         else:
             docs = self.vectorstore.similarity_search(query, k=topk)
 
-        return [doc.page_content for doc in docs]
+        return docs
