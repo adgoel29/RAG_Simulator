@@ -28,7 +28,7 @@ class RagClass:
             topk=topk,
             method=method
         )
-        return docs
+        return [doc.page_content for doc in docs]
     
     def chunking(self,path,method,**kwargs):
         with open(path,'r',encoding="utf-8") as f:

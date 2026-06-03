@@ -17,4 +17,4 @@ print(docs)
 model_name="cross-encoder/ms-marco-MiniLM-L-6-v2"
 reranker_instance=Reranker(model_name)
 reranked_docs=reranker_instance.reranking_docs(docs,query,topk=3)
-print([reranked_doc.page_content for reranked_doc in reranked_docs ])
+print(reranked_docs)
