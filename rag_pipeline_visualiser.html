@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG Pipeline Visualizer</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f4f0; color: #1a1a1a; min-height: 100vh; padding: 24px; }
+
+/* ── header ── */
+.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.header h1 { font-size: 17px; font-weight: 500; }
+.pipeline-steps { display: flex; align-items: center; gap: 0; }
+.step-pill { font-size: 11px; font-weight: 500; padding: 4px 12px; border: 0.5px solid #ddd; background: #fff; color: #888; cursor: default; }
+.step-pill:first-child { border-radius: 99px 0 0 99px; }
+.step-pill:last-child  { border-radius: 0 99px 99px 0; }
+.step-pill.done  { background: #EAF3DE; color: #3B6D11; border-color: #C0DD97; }
+.step-pill.active{ background: #E6F1FB; color: #0C447C; border-color: #85B7EB; }
+.step-sep { font-size: 11px; color: #ccc; margin: 0 2px; }
+
+/* ── config bar ── */
+.config-bar { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 14px; flex-wrap: wrap; }
+.cfg-group { display: flex; flex-direction: column; gap: 4px; }
+.cfg-label { font-size: 11px; color: #888; }
+.cfg-label span { font-family: 'Courier New', monospace; font-size: 10px; background: #f0f0ec; border-radius: 3px; padding: 1px 5px; color: #555; }
+select, input[type=text], input[type=number] { font-size: 12px; padding: 6px 9px; border-radius: 7px; border: 0.5px solid #ccc; background: #fff; color: #1a1a1a; }
+select { cursor: pointer; }
+textarea { font-size: 12px; font-family: 'Courier New', monospace; padding: 9px; border-radius: 8px; border: 0.5px solid #ccc; background: #fff; color: #1a1a1a; resize: vertical; line-height: 1.6; }
+.btn { font-size: 12px; padding: 7px 16px; border-radius: 8px; border: 0.5px solid #ccc; background: #1a1a1a; color: #fff; cursor: pointer; font-weight: 500; white-space: nowrap; }
+.btn:hover { background: #333; }
+.btn.secondary { background: #fff; color: #1a1a1a; }
+.btn.secondary:hover { background: #f5f5f0; }
+
+/* ── main layout ── */
+.main-wrap { display: grid; grid-template-columns: 1fr 1fr; border: 0.5px solid #ddd; border-radius: 12px; overflow: hidden; background: #fff; }
+.left-col  { border-right: 0.5px solid #e8e8e8; display: flex; flex-direction: column; min-height: 520px; }
+.right-col { display: flex; flex-direction: column; min-height: 520px; }
+
+/* ── stats bar ── */
+.stats-bar { display: grid; grid-template-columns: repeat(5, 1fr); border-bottom: 0.5px solid #e8e8e8; background: #fafafa; }
+.stat { padding: 9px 12px; border-right: 0.5px solid #e8e8e8; }
+.stat:last-child { border-right: none; }
+.stat-label { font-size: 10px; color: #aaa; margin-bottom: 2px; }
+.stat-value { font-size: 14px; font-weight: 500; color: #1a1a1a; }
+
+/* ── legend ── */
+.legend { display: flex; gap: 12px; padding: 7px 14px; border-bottom: 0.5px solid #e8e8e8; background: #fafafa; font-size: 11px; color: #888; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.ls { width: 13px; height: 13px; border-radius: 2px; flex-shrink: 0; }
+
+/* ── chunk pane ── */
+.chunk-pane { padding: 16px; font-size: 13px; line-height: 1.9; word-break: break-word; flex: 1; }
+.chunk-span { border-radius: 3px; cursor: pointer; padding: 1px 0; transition: outline 0.12s; position: relative; }
+.chunk-span:hover  { outline: 2px solid #888 !important; }
+.chunk-span.selected { outline: 2px solid #378ADD !important; }
+.chunk-span.retrieved { outline: 2px solid #1D9E75 !important; }
+.chunk-span.reranked  { outline: 2px solid #D85A30 !important; }
+
+/* ── query bar ── */
+.query-bar { border-top: 0.5px solid #e8e8e8; padding: 12px 14px; display: flex; gap: 8px; align-items: center; background: #fafafa; }
+.query-bar input { flex: 1; }
+.search-opts { display: flex; gap: 6px; align-items: center; }
+
+/* ── inspector ── */
+.inspector-wrap { flex: 1; display: flex; align-items: center; justify-content: center; color: #ccc; font-size: 13px; }
+.inspector { padding: 16px; font-size: 12px; width: 100%; overflow-y: auto; }
+.ins-section-title { font-size: 10px; font-weight: 500; color: #aaa; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+.ins-grid { display: grid; gap: 6px; margin-bottom: 14px; }
+.ins-cell { background: #fafafa; border-radius: 6px; border: 0.5px solid #e8e8e8; padding: 7px 10px; }
+.ins-label { font-size: 10px; color: #aaa; margin-bottom: 2px; }
+.ins-value { font-size: 13px; font-weight: 500; color: #1a1a1a; font-family: 'Courier New', monospace; word-break: break-all; }
+.ins-text { background: #fafafa; border-radius: 6px; border: 0.5px solid #e8e8e8; padding: 9px 11px; font-size: 12px; color: #1a1a1a; line-height: 1.65; margin-bottom: 14px; }
+.score-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.score-name { font-size: 11px; color: #888; width: 75px; flex-shrink: 0; }
+.score-track { flex: 1; height: 5px; background: #e8e8e8; border-radius: 3px; overflow: hidden; }
+.score-fill  { height: 100%; border-radius: 3px; }
+.score-num   { font-size: 11px; font-weight: 500; color: #1a1a1a; width: 38px; text-align: right; flex-shrink: 0; }
+.emb-row { display: flex; gap: 2px; flex-wrap: wrap; margin-top: 5px; }
+.emb-px  { width: 13px; height: 13px; border-radius: 2px; }
+.badge { border-radius: 99px; padding: 2px 10px; font-size: 11px; font-weight: 500; }
+.badge-retrieved { background: #E1F5EE; color: #085041; border: 0.5px solid #9FE1CB; }
+.badge-reranked  { background: #FAECE7; color: #712B13; border: 0.5px solid #F5C4B3; }
+.badge-chunk     { }
+
+.tag { font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 500; }
+.tag-mmr { background: #EEEDFE; color: #3C3489; }
+.tag-sim { background: #E6F1FB; color: #0C447C; }
+.tag-sem { background: #EAF3DE; color: #27500A; }
+.tag-fix { background: #FAEEDA; color: #633806; }
+
+.placeholder { display: flex; align-items: center; justify-content: center; height: 120px; color: #ccc; font-size: 13px; text-align: center; padding: 1rem; }
+
+/* ── right panel tabs ── */
+.panel-tabs { display: flex; border-bottom: 0.5px solid #e8e8e8; background: #fafafa; }
+.panel-tab { flex: 1; font-size: 11px; font-weight: 500; padding: 8px 0; text-align: center; cursor: pointer; color: #aaa; border: none; background: transparent; border-bottom: 2px solid transparent; }
+.panel-tab.active { color: #1a1a1a; border-bottom-color: #378ADD; }
+.panel-content { flex: 1; overflow-y: auto; }
+
+/* ── retrieved docs list ── */
+.doc-list { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.doc-card { border: 0.5px solid #e8e8e8; border-radius: 8px; padding: 10px 12px; cursor: pointer; transition: border-color 0.12s; }
+.doc-card:hover { border-color: #aaa; }
+.doc-card.selected { border-color: #378ADD; }
+.doc-card-header { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+.doc-card-text { font-size: 12px; color: #555; line-height: 1.55; }
+.rank-badge { font-size: 10px; font-weight: 500; background: #f0f0ec; color: #555; border-radius: 99px; padding: 1px 8px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>RAG pipeline visualizer</h1>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span style="font-size:11px;color:#aaa">pipeline:</span>
+    <div class="pipeline-steps">
+      <span class="step-pill" id="step-chunk">chunk</span>
+      <span class="step-pill" id="step-embed">embed</span>
+      <span class="step-pill" id="step-search">search</span>
+      <span class="step-pill" id="step-rerank">rerank</span>
+    </div>
+  </div>
+</div>
+
+<!-- config -->
+<div class="config-bar">
+  <div class="cfg-group">
+    <div class="cfg-label">document <span>sample.txt</span></div>
+    <textarea id="raw-input" rows="3" style="width:320px" placeholder="Paste document text…">Retrieval-Augmented Generation (RAG) is the process of optimizing the output of a large language model, so it references an authoritative knowledge base outside of its training data sources before generating a response. Large Language Models (LLMs) are trained on vast volumes of data and use billions of parameters to generate original output for tasks like answering questions, translating languages, and completing sentences. RAG extends the already powerful capabilities of LLMs to specific domains or an organization's internal knowledge base, all without the need to retrain the model. It is a cost-effective approach to improving LLM output so it remains relevant, accurate, and useful in various contexts.
+
+Why is Retrieval-Augmented Generation important? LLMs are a key artificial intelligence technology powering intelligent chatbots and other natural language processing applications. The goal is to create bots that can answer user questions by cross-referencing authoritative knowledge sources. Unfortunately, the nature of LLM technology introduces unpredictability in responses. LLM training data is static and introduces a cut-off date on the knowledge it has. Known challenges include presenting false information, out-of-date or generic responses, and inaccurate answers due to terminology confusion.</textarea>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div class="cfg-group">
+      <div class="cfg-label">chunking <span>test.chunking(path, …)</span></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <select id="chunk-mode">
+          <option value="semantic">semantic</option>
+          <option value="fixed">fixed</option>
+        </select>
+        <span id="fixed-opts" style="display:none;gap:6px;align-items:center">
+          <input type="number" id="chunk-size" value="200" min="50" max="1000" step="10" style="width:70px" title="chunk size">
+          <input type="number" id="overlap"     value="40"  min="0"  max="300"  step="10" style="width:60px" title="overlap">
+        </span>
+      </div>
+    </div>
+
+    <div class="cfg-group">
+      <div class="cfg-label">embedding <span>all-MiniLM-L6-v2 · 384 dims</span></div>
+      <input type="text" value="all-MiniLM-L6-v2" readonly style="width:200px;color:#888;background:#fafafa">
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div class="cfg-group">
+      <div class="cfg-label">search <span>test.searching(query, …)</span></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <select id="search-mode">
+          <option value="mmr">mmr</option>
+          <option value="similarity">similarity</option>
+        </select>
+        <input type="number" id="top-k" value="5" min="1" max="20" style="width:55px" title="top_k">
+        <span style="font-size:11px;color:#aaa">top_k</span>
+      </div>
+    </div>
+
+    <div class="cfg-group">
+      <div class="cfg-label">reranker <span>cross-encoder/ms-marco-MiniLM-L-6-v2</span></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="number" id="rerank-topk" value="3" min="1" max="10" style="width:55px" title="topk">
+        <span style="font-size:11px;color:#aaa">topk</span>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn" onclick="run()" style="align-self:flex-end">Run pipeline</button>
+</div>
+
+<!-- main -->
+<div class="main-wrap">
+  <!-- left: chunk pane -->
+  <div class="left-col">
+    <div class="stats-bar">
+      <div class="stat"><div class="stat-label">chunks</div><div class="stat-value" id="s-chunks">—</div></div>
+      <div class="stat"><div class="stat-label">avg size</div><div class="stat-value" id="s-avg">—</div></div>
+      <div class="stat"><div class="stat-label">overlap</div><div class="stat-value" id="s-avgo">—</div></div>
+      <div class="stat"><div class="stat-label">retrieved</div><div class="stat-value" id="s-retrieved">—</div></div>
+      <div class="stat"><div class="stat-label">reranked</div><div class="stat-value" id="s-reranked">—</div></div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="ls" style="background:#E6F1FB;border:0.5px solid #B5D4F4"></div>chunk</div>
+      <div class="legend-item"><div class="ls" style="background:#FAEEDA;border:0.5px solid #FAC775"></div>overlap</div>
+      <div class="legend-item"><div class="ls" style="background:#E1F5EE;border:2px solid #1D9E75"></div>retrieved</div>
+      <div class="legend-item"><div class="ls" style="background:#FAECE7;border:2px solid #D85A30"></div>reranked</div>
+    </div>
+    <div class="chunk-pane" id="chunk-pane">
+      <div class="placeholder">Configure pipeline and click "Run pipeline"</div>
+    </div>
+    <div class="query-bar">
+      <input type="text" id="query-input" placeholder="Enter query…" style="flex:1" onkeydown="if(event.key==='Enter')runQuery()">
+      <button class="btn secondary" onclick="runQuery()"><i class="ti ti-search" style="font-size:13px;vertical-align:-1px"></i> Search + Rerank</button>
+    </div>
+  </div>
+
+  <!-- right: inspector + docs -->
+  <div class="right-col">
+    <div class="panel-tabs">
+      <button class="panel-tab active" onclick="switchTab('inspector',this)">chunk inspector</button>
+      <button class="panel-tab"        onclick="switchTab('docs',this)">retrieved docs</button>
+      <button class="panel-tab"        onclick="switchTab('reranked',this)">reranked docs</button>
+    </div>
+    <div class="panel-content">
+      <div id="tab-inspector" class="inspector-wrap"><span>Click a chunk to inspect</span></div>
+      <div id="tab-docs"      style="display:none"><div class="doc-list" id="doc-list"><div class="placeholder">Run a query to see retrieved docs</div></div></div>
+      <div id="tab-reranked"  style="display:none"><div class="doc-list" id="reranked-list"><div class="placeholder">Run a query to see reranked docs</div></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   DATA & STATE
+═══════════════════════════════════════════════════ */
+const CHUNK_COLORS  = ['#E6F1FB','#E1F5EE','#EEEDFE','#FAECE7','#FBEAF0','#EAF3DE','#FAEEDA'];
+const CHUNK_BORDERS = ['#B5D4F4','#9FE1CB','#CECBF6','#F5C4B3','#F4C0D1','#C0DD97','#FAC775'];
+const CHUNK_TEXT    = ['#0C447C','#085041','#3C3489','#712B13','#72243E','#27500A','#633806'];
+
+let traces        = [];
+let retrievedIds  = new Set();
+let rerankedIds   = new Set();
+let selectedId    = null;
+let currentTab    = 'inspector';
+
+/* ═══════════════════════════════════════════════════
+   CHUNKING  (mirrors RagClass.chunking)
+═══════════════════════════════════════════════════ */
+function chunkFixed(text, size, overlap) {
+  const chunks = [];
+  let start = 0;
+  while (start < text.length) {
+    let end = Math.min(start + size, text.length);
+    if (end < text.length) {
+      const sp = text.lastIndexOf(' ', end);
+      if (sp > start) end = sp;
+    }
+    chunks.push({ start_char: start, end_char: end, text: text.slice(start, end) });
+    if (end >= text.length) break;
+    start = Math.max(start + 1, end - overlap);
+  }
+  return chunks;
+}
+
+function chunkSemantic(text) {
+  // Split on sentence boundaries (mirrors sentence-level semantic chunking)
+  const sentenceRe = /[^.!?\n]+[.!?\n]+/g;
+  const sentences  = [];
+  let m;
+  let last = 0;
+  while ((m = sentenceRe.exec(text)) !== null) {
+    sentences.push({ text: m[0].trim(), start: m.index, end: m.index + m[0].length });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) sentences.push({ text: text.slice(last).trim(), start: last, end: text.length });
+
+  // Group into chunks of ~2-3 sentences (simulates semantic similarity grouping)
+  const chunks = [];
+  let i = 0;
+  while (i < sentences.length) {
+    const group = sentences.slice(i, i + 3);
+    const joined = group.map(s => s.text).join(' ');
+    chunks.push({
+      start_char: group[0].start,
+      end_char:   group[group.length - 1].end,
+      text:       joined
+    });
+    i += 3;
+  }
+  return chunks;
+}
+
+/* ═══════════════════════════════════════════════════
+   MOCK EMBEDDING  (all-MiniLM-L6-v2, 384 dims)
+═══════════════════════════════════════════════════ */
+function mockEmbed(text) {
+  // Deterministic-ish pseudo-embedding based on text hash
+  const seed = text.split('').reduce((a,c) => (a * 31 + c.charCodeAt(0)) & 0xffffffff, 0);
+  const rng  = (s => () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0xffffffff; })(Math.abs(seed));
+  return Array.from({length: 24}, () => parseFloat(rng().toFixed(3)));
+}
+
+/* ═══════════════════════════════════════════════════
+   MOCK SEARCH  (mmr or similarity)
+═══════════════════════════════════════════════════ */
+function mockSearch(query, trs, mode, topK) {
+  // Score each chunk by word overlap with query (proxy for cosine sim)
+  const qWords = new Set(query.toLowerCase().split(/\W+/).filter(Boolean));
+  const scored = trs.map((t, i) => {
+    const cWords = t.chunk.text.toLowerCase().split(/\W+/).filter(Boolean);
+    const overlap = cWords.filter(w => qWords.has(w)).length;
+    let score = overlap / Math.max(qWords.size, 1);
+    score = Math.min(0.99, score + 0.45 + (i % 3) * 0.02);
+    return { idx: i, score: parseFloat(score.toFixed(4)) };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+
+  if (mode === 'mmr') {
+    // Greedy MMR: penalise chunks similar to already-selected
+    const selected = [];
+    const remaining = [...scored];
+    while (selected.length < Math.min(topK, trs.length) && remaining.length) {
+      const best = remaining.reduce((best, cand) => {
+        const redundancy = selected.length
+          ? Math.max(...selected.map(s => 1 - Math.abs(s.score - cand.score)))
+          : 0;
+        const mmr = 0.6 * cand.score - 0.4 * redundancy;
+        return mmr > best.mmr ? { ...cand, mmr } : best;
+      }, { mmr: -Infinity });
+      selected.push(best);
+      remaining.splice(remaining.findIndex(r => r.idx === best.idx), 1);
+    }
+    return selected.slice(0, topK);
+  }
+
+  return scored.slice(0, topK);
+}
+
+/* ═══════════════════════════════════════════════════
+   MOCK RERANKER  (cross-encoder/ms-marco-MiniLM-L-6-v2)
+═══════════════════════════════════════════════════ */
+function mockRerank(query, retrievedList, topK) {
+  const qWords = new Set(query.toLowerCase().split(/\W+/).filter(Boolean));
+  const rescored = retrievedList.map((r, rank) => {
+    const t = traces[r.idx];
+    const cWords = t.chunk.text.toLowerCase().split(/\W+/).filter(Boolean);
+    const precision = cWords.filter(w => qWords.has(w)).length / Math.max(cWords.length, 1);
+    const crossScore = parseFloat(Math.min(0.99, precision * 5 + 0.3 + Math.random() * 0.05).toFixed(4));
+    return { idx: r.idx, score_before: r.score, score_after: crossScore, rank_before: rank + 1 };
+  });
+  rescored.sort((a, b) => b.score_after - a.score_after);
+  return rescored.slice(0, topK).map((r, i) => ({ ...r, rank_after: i + 1 }));
+}
+
+/* ═══════════════════════════════════════════════════
+   PIPELINE RUN
+═══════════════════════════════════════════════════ */
+function run() {
+  const text      = document.getElementById('raw-input').value.trim();
+  const mode      = document.getElementById('chunk-mode').value;
+  const size      = parseInt(document.getElementById('chunk-size').value) || 200;
+  const overlap   = parseInt(document.getElementById('overlap').value)    || 40;
+  if (!text) return;
+
+  setStep('chunk','active');
+
+  const rawChunks = mode === 'semantic' ? chunkSemantic(text) : chunkFixed(text, size, overlap);
+
+  // Build ChunkTrace objects  ← your actual classes would populate these
+  traces = rawChunks.map((c, i) => ({
+    chunk: {
+      chunk_id:   i,
+      text:       c.text,
+      start_char: c.start_char,
+      end_char:   c.end_char
+    },
+    embedding: {
+      method:           'all-MiniLM-L6-v2',   // SentenceTransformer model
+      vector_dimension: 384,
+      embedding:        mockEmbed(c.text)
+    },
+    retrieval: null,
+    reranker:  null,
+    extra: {
+      chunk_mode:   mode,
+      overlap_chars: i > 0 ? Math.max(0, rawChunks[i-1].end_char - c.start_char) : 0
+    }
+  }));
+
+  retrievedIds = new Set();
+  rerankedIds  = new Set();
+  selectedId   = null;
+
+  // Stats
+  const avgSize = Math.round(traces.reduce((a,t)=>a+t.chunk.text.length,0)/traces.length);
+  const withOv  = traces.filter(t=>t.extra.overlap_chars>0).length;
+  const avgOv   = withOv
+    ? Math.round(traces.filter(t=>t.extra.overlap_chars>0).reduce((a,t)=>a+t.extra.overlap_chars,0)/withOv)
+    : 0;
+
+  document.getElementById('s-chunks').textContent    = traces.length;
+  document.getElementById('s-avg').textContent       = avgSize + ' ch';
+  document.getElementById('s-avgo').textContent      = mode==='fixed' ? avgOv+' ch' : 'n/a';
+  document.getElementById('s-retrieved').textContent = '—';
+  document.getElementById('s-reranked').textContent  = '—';
+
+  setStep('chunk','done'); setStep('embed','done');
+  renderChunks(text, traces);
+  document.getElementById('tab-inspector').innerHTML = '<span style="color:#ccc;font-size:13px">Click a chunk to inspect</span>';
+  document.getElementById('doc-list').innerHTML      = '<div class="placeholder">Run a query to see retrieved docs</div>';
+  document.getElementById('reranked-list').innerHTML = '<div class="placeholder">Run a query to see reranked docs</div>';
+}
+
+/* ═══════════════════════════════════════════════════
+   QUERY + SEARCH + RERANK
+═══════════════════════════════════════════════════ */
+function runQuery() {
+  if (!traces.length) { alert('Run pipeline first.'); return; }
+  const query    = document.getElementById('query-input').value.trim();
+  const sMode    = document.getElementById('search-mode').value;
+  const topK     = parseInt(document.getElementById('top-k').value)     || 5;
+  const rerankK  = parseInt(document.getElementById('rerank-topk').value)|| 3;
+  if (!query) return;
+
+  setStep('search','active');
+
+  const retrieved = mockSearch(query, traces, sMode, topK);
+  retrievedIds = new Set(retrieved.map(r => r.idx));
+
+  retrieved.forEach((r, rank) => {
+    traces[r.idx].retrieval = {
+      similarity_score: r.score,
+      rank:             rank + 1,
+      method:           sMode
+    };
+  });
+
+  setStep('search','done'); setStep('rerank','active');
+
+  const reranked = mockRerank(query, retrieved, rerankK);
+  rerankedIds = new Set(reranked.map(r => r.idx));
+
+  reranked.forEach(r => {
+    traces[r.idx].reranker = {
+      score_before: r.score_before,
+      score_after:  r.score_after,
+      rank_before:  r.rank_before,
+      rank_after:   r.rank_after,
+      model:        'cross-encoder/ms-marco-MiniLM-L-6-v2'
+    };
+  });
+
+  setStep('rerank','done');
+
+  document.getElementById('s-retrieved').textContent = retrieved.length;
+  document.getElementById('s-reranked').textContent  = reranked.length;
+
+  renderChunks(document.getElementById('raw-input').value, traces);
+  renderDocList(retrieved, reranked, query);
+}
+
+/* ═══════════════════════════════════════════════════
+   RENDER CHUNK PANE
+═══════════════════════════════════════════════════ */
+function renderChunks(fullText, trs) {
+  const pane = document.getElementById('chunk-pane');
+  let html = '';
+  let pos  = 0;
+
+  for (let i = 0; i < trs.length; i++) {
+    const t  = trs[i];
+    const c  = t.chunk;
+    const ci = i % CHUNK_COLORS.length;
+    const ovLen = t.extra.overlap_chars || 0;
+
+    if (pos < c.start_char) html += esc(fullText.slice(pos, c.start_char));
+
+    let border = `outline:1px solid ${CHUNK_BORDERS[ci]}`;
+    if (rerankedIds.has(i))  border = 'outline:2px solid #D85A30';
+    else if (retrievedIds.has(i)) border = 'outline:2px solid #1D9E75';
+
+    let bg = CHUNK_COLORS[ci];
+    if (rerankedIds.has(i))  bg = '#FAECE7';
+    else if (retrievedIds.has(i)) bg = '#E1F5EE';
+
+    let inner = '';
+    if (ovLen > 0 && t.extra.chunk_mode === 'fixed') {
+      inner = `<span style="background:#FAEEDA;border-bottom:2px dashed #BA7517;border-radius:2px">${esc(c.text.slice(0,ovLen))}</span>${esc(c.text.slice(ovLen))}`;
+    } else {
+      inner = esc(c.text);
+    }
+
+    html += `<span class="chunk-span${selectedId===i?' selected':''}" id="cs-${i}" data-id="${i}"
+      style="background:${bg};border-radius:3px;${border}"
+      onclick="selectChunk(${i})"
+    ><sup style="font-size:10px;font-weight:500;color:${CHUNK_TEXT[ci]};margin-right:1px">${i}</sup>${inner}</span>`;
+
+    pos = c.end_char;
+  }
+  if (pos < fullText.length) html += esc(fullText.slice(pos));
+  pane.innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════
+   RENDER DOC LISTS
+═══════════════════════════════════════════════════ */
+function renderDocList(retrieved, reranked, query) {
+  const docEl = document.getElementById('doc-list');
+  const rerEl = document.getElementById('reranked-list');
+
+  docEl.innerHTML = retrieved.map((r, rank) => {
+    const t = traces[r.idx];
+    const ci = r.idx % CHUNK_COLORS.length;
+    return `<div class="doc-card" onclick="selectChunk(${r.idx});switchTabByName('inspector')" title="Click to inspect">
+      <div class="doc-card-header">
+        <span class="rank-badge">#${rank+1}</span>
+        <span class="badge badge-chunk" style="background:${CHUNK_COLORS[ci]};color:${CHUNK_TEXT[ci]};border:0.5px solid ${CHUNK_BORDERS[ci]}">chunk ${r.idx}</span>
+        <span class="tag tag-${document.getElementById('search-mode').value}">${document.getElementById('search-mode').value}</span>
+        <span style="margin-left:auto;font-size:12px;font-weight:500;color:${scoreColor(r.score)}">${r.score.toFixed(3)}</span>
+      </div>
+      <div class="doc-card-text">${esc(t.chunk.text.slice(0,120))}${t.chunk.text.length>120?'…':''}</div>
+    </div>`;
+  }).join('');
+
+  rerEl.innerHTML = reranked.map((r, rank) => {
+    const t = traces[r.idx];
+    const ci = r.idx % CHUNK_COLORS.length;
+    const delta = r.rank_before - r.rank_after;
+    return `<div class="doc-card" onclick="selectChunk(${r.idx});switchTabByName('inspector')" title="Click to inspect">
+      <div class="doc-card-header">
+        <span class="rank-badge">#${rank+1}</span>
+        <span class="badge badge-reranked">reranked</span>
+        <span class="badge badge-chunk" style="background:${CHUNK_COLORS[ci]};color:${CHUNK_TEXT[ci]};border:0.5px solid ${CHUNK_BORDERS[ci]}">chunk ${r.idx}</span>
+        <span style="font-size:11px;color:${delta>0?'#3B6D11':delta<0?'#A32D2D':'#aaa'}">${delta>0?'↑'+delta:delta<0?'↓'+Math.abs(delta):'→'}</span>
+        <span style="margin-left:auto;font-size:12px;font-weight:500;color:${scoreColor(r.score_after)}">${r.score_after.toFixed(3)}</span>
+      </div>
+      <div class="doc-card-text">${esc(t.chunk.text.slice(0,120))}${t.chunk.text.length>120?'…':''}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════
+   CHUNK INSPECTOR
+═══════════════════════════════════════════════════ */
+function selectChunk(id) {
+  document.querySelectorAll('.chunk-span').forEach(el => el.classList.remove('selected'));
+  const el = document.getElementById('cs-' + id);
+  if (el) el.classList.add('selected');
+  selectedId = id;
+
+  const t   = traces[id];
+  const ci  = id % CHUNK_COLORS.length;
+  const emb = t.embedding;
+  const ret = t.retrieval;
+  const rr  = t.reranker;
+  const chunkLen = t.chunk.end_char - t.chunk.start_char;
+
+  const embCells = emb.embedding.map(v => {
+    const stops = ['#042C53','#0C447C','#185FA5','#378ADD','#85B7EB','#B5D4F4'];
+    return `<div class="emb-px" style="background:${stops[Math.min(5,Math.floor(v*6))]}" title="${v}"></div>`;
+  }).join('');
+
+  let statusBadge = '';
+  if (rerankedIds.has(id))  statusBadge = '<span class="badge badge-reranked">reranked</span>';
+  else if (retrievedIds.has(id)) statusBadge = '<span class="badge badge-retrieved">retrieved</span>';
+
+  const ins = document.getElementById('tab-inspector');
+  ins.className = 'inspector';
+  ins.innerHTML = `
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:12px;flex-wrap:wrap">
+      <span class="badge badge-chunk" style="background:${CHUNK_COLORS[ci]};color:${CHUNK_TEXT[ci]};border:0.5px solid ${CHUNK_BORDERS[ci]}">chunk ${id}</span>
+      ${statusBadge}
+      <span class="tag tag-${t.extra.chunk_mode}">${t.extra.chunk_mode}</span>
+      <span style="font-size:11px;color:#aaa;margin-left:auto">${chunkLen} chars</span>
+    </div>
+
+    <div class="ins-text">${esc(t.chunk.text)}</div>
+
+    <div class="ins-section-title"><i class="ti ti-file-text" style="font-size:13px"></i> chunk metadata</div>
+    <div class="ins-grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:14px">
+      <div class="ins-cell"><div class="ins-label">start_char</div><div class="ins-value">${t.chunk.start_char}</div></div>
+      <div class="ins-cell"><div class="ins-label">end_char</div><div class="ins-value">${t.chunk.end_char}</div></div>
+      <div class="ins-cell"><div class="ins-label">overlap</div><div class="ins-value">${t.extra.overlap_chars} ch</div></div>
+    </div>
+
+    <div class="ins-section-title"><i class="ti ti-vector" style="font-size:13px"></i> embedding  <span style="font-weight:400;color:#bbb;text-transform:none;letter-spacing:0">(SentenceTransformer)</span></div>
+    <div class="ins-grid" style="grid-template-columns:1fr 1fr;margin-bottom:8px">
+      <div class="ins-cell"><div class="ins-label">model</div><div class="ins-value" style="font-size:10px">${emb.method}</div></div>
+      <div class="ins-cell"><div class="ins-label">dimensions</div><div class="ins-value">${emb.vector_dimension}</div></div>
+    </div>
+    <div class="ins-cell" style="margin-bottom:14px">
+      <div class="ins-label">vector preview · first ${emb.embedding.length} of ${emb.vector_dimension} dims</div>
+      <div class="emb-row">${embCells}</div>
+    </div>
+
+    ${ret ? `
+    <div class="ins-section-title"><i class="ti ti-search" style="font-size:13px"></i> retrieval  <span style="font-weight:400;color:#bbb;text-transform:none;letter-spacing:0">(RagClass.searching)</span></div>
+    <div class="ins-grid" style="grid-template-columns:1fr 1fr;margin-bottom:8px">
+      <div class="ins-cell"><div class="ins-label">method</div><div class="ins-value" style="font-size:11px">${ret.method}</div></div>
+      <div class="ins-cell"><div class="ins-label">rank</div><div class="ins-value">#${ret.rank}</div></div>
+    </div>
+    <div style="margin-bottom:14px">
+      <div class="score-row">
+        <span class="score-name">similarity</span>
+        <div class="score-track"><div class="score-fill" style="width:${(ret.similarity_score*100).toFixed(1)}%;background:${scoreColor(ret.similarity_score)}"></div></div>
+        <span class="score-num" style="color:${scoreColor(ret.similarity_score)}">${ret.similarity_score.toFixed(3)}</span>
+      </div>
+    </div>` : `<div style="color:#ccc;font-size:12px;margin-bottom:14px">retrieval — run a query first</div>`}
+
+    ${rr ? `
+    <div class="ins-section-title"><i class="ti ti-arrows-sort" style="font-size:13px"></i> reranker  <span style="font-weight:400;color:#bbb;text-transform:none;letter-spacing:0">(Reranker.reranking_docs)</span></div>
+    <div class="ins-grid" style="grid-template-columns:1fr 1fr 1fr 1fr;margin-bottom:8px">
+      <div class="ins-cell"><div class="ins-label">rank before</div><div class="ins-value">#${rr.rank_before}</div></div>
+      <div class="ins-cell"><div class="ins-label">rank after</div><div class="ins-value">#${rr.rank_after}</div></div>
+      <div class="ins-cell"><div class="ins-label">delta</div><div class="ins-value" style="color:${(rr.rank_before-rr.rank_after)>0?'#3B6D11':(rr.rank_before-rr.rank_after)<0?'#A32D2D':'#aaa'}">${(rr.rank_before-rr.rank_after)>0?'+'+(rr.rank_before-rr.rank_after):(rr.rank_before-rr.rank_after)}</div></div>
+      <div class="ins-cell"><div class="ins-label">topk</div><div class="ins-value">${document.getElementById('rerank-topk').value}</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:8px">
+      <div class="score-row"><span class="score-name">bi-encoder</span><div class="score-track"><div class="score-fill" style="width:${(rr.score_before*100).toFixed(1)}%;background:#888"></div></div><span class="score-num">${rr.score_before.toFixed(3)}</span></div>
+      <div class="score-row"><span class="score-name">cross-encoder</span><div class="score-track"><div class="score-fill" style="width:${(rr.score_after*100).toFixed(1)}%;background:#1D9E75"></div></div><span class="score-num">${rr.score_after.toFixed(3)}</span></div>
+    </div>
+    <div class="ins-cell">
+      <div class="ins-label">reranker model</div>
+      <div class="ins-value" style="font-size:10px">${rr.model}</div>
+    </div>` : `<div style="color:#ccc;font-size:12px">reranker — chunk not in top-k or query not run</div>`}
+  `;
+
+  if (currentTab !== 'inspector') switchTabByName('inspector');
+}
+
+/* ═══════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════ */
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function scoreColor(v) {
+  if (v >= 0.88) return '#3B6D11';
+  if (v >= 0.75) return '#0F6E56';
+  if (v >= 0.60) return '#854F0B';
+  return '#A32D2D';
+}
+
+function setStep(id, state) {
+  const el = document.getElementById('step-' + id);
+  el.className = 'step-pill ' + state;
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  ['inspector','docs','reranked'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===name ? '' : 'none';
+  });
+  currentTab = name;
+}
+
+function switchTabByName(name) {
+  const tabs = document.querySelectorAll('.panel-tab');
+  const names = ['inspector','docs','reranked'];
+  const idx = names.indexOf(name);
+  if (idx>=0) switchTab(name, tabs[idx]);
+}
+
+/* ── chunk-mode toggle ── */
+document.getElementById('chunk-mode').addEventListener('change', function() {
+  document.getElementById('fixed-opts').style.display = this.value==='fixed' ? 'flex' : 'none';
+});
+
+/* ── init ── */
+run();
+</script>
+</body>
+</html>
