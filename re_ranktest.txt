@@ -1,0 +1,153 @@
+OrionForge Internal Knowledge Base
+
+Company Overview
+
+OrionForge is a software company founded in 2018. It builds enterprise search tools, workflow automation software, and internal AI assistants for large teams. The company has offices in Bengaluru, Pune, and Singapore.
+
+OrionForge’s main goal is to help employees find the right information quickly, reduce repeated manual work, and improve decision-making with retrieval systems and automation.
+
+Work Policy
+
+Most engineering employees follow a hybrid schedule. They work from the office three days per week and can work from home on the remaining two days.
+
+Employees working in security operations, production incident response, and on-site infrastructure teams must work from the office five days per week. These roles require secure access to systems and faster coordination during incidents.
+
+Fully remote work is possible only when an employee receives written approval from the department head.
+
+Internship Policy
+
+OrionForge offers a six-month internship program for university students. Interns often work on backend services, search pipelines, and data cleanup tools.
+
+Interns are expected to be in the office three days per week. They are not allowed to work fully remote during the internship.
+
+Interns receive mentorship, participate in project reviews, and work on supervised production tasks.
+
+Leave Policy
+
+Full-time employees receive 22 paid leaves every calendar year. They also receive 9 sick leaves and company-declared public holidays.
+
+Unused paid leave can be carried forward, but the total balance cannot exceed 35 days.
+
+Travel Policy
+
+Business travel must be approved before booking. Domestic travel is usually reimbursed within five working days after expense submission.
+
+Employees traveling for client meetings must choose economy class unless the manager approves otherwise. Hotel reimbursement is capped according to city grade.
+
+Training and Certification Policy
+
+Employees are encouraged to take technical courses and certification exams. OrionForge reimburses one certification attempt per year if the course is relevant to the employee’s role.
+
+The learning budget can be used for online classes, books, and approved workshops. The budget cannot be used for entertainment, gadgets, or personal subscriptions.
+
+Search Platform Overview
+
+OrionForge has an internal retrieval platform called OrionSearch. OrionSearch is used to search policies, product notes, support documents, and engineering pages.
+
+The first version of OrionSearch used only vector similarity search. It performed well when the user query and the correct document were broadly related, but it often returned passages that looked similar without actually answering the question.
+
+To improve precision, the team added a reranker after retrieval. The reranker compares the user query directly with each candidate passage and reorders the results by relevance.
+
+After reranking was added, the internal evaluation score improved from 74 percent to 89 percent.
+
+Search Pipeline
+
+The OrionSearch pipeline works in stages. First, the query is converted into embeddings. Next, the vector database retrieves the top 20 candidate chunks. Then a reranker scores those chunks again. Finally, the top 5 chunks are passed to the language model for answer generation.
+
+Embeddings are good at finding broadly related text. Reranking is better at deciding whether a specific passage actually answers the question.
+
+This two-stage process helps reduce mistakes caused by semantically similar but wrong passages.
+
+Why Reranking Was Added
+
+The reranker was added because vector search often returned documents that shared the same vocabulary but not the same intent.
+
+For example, a question about why answer quality improved could retrieve a section about ranking sports teams, a section about database indexing, or a section about document scores. These passages are related in meaning, but only one of them actually explains the retrieval issue.
+
+The reranker fixed this by looking at the exact relationship between the query and each passage.
+
+Embeddings vs Reranking
+
+Embeddings are designed to place similar text close together in vector space. They are useful for candidate retrieval and broad semantic matching.
+
+Reranking works differently. It evaluates each retrieved passage against the query in more detail. A reranker can tell the difference between a passage that is merely related and a passage that directly answers the question.
+
+In practice, embeddings find the neighborhood and reranking chooses the best house inside it.
+
+Vector Database Comparison
+
+OrionForge tested multiple vector databases. FAISS was used for early experiments because it was fast on local machines and easy to prototype with.
+
+Qdrant was chosen for production because it supports persistent storage, metadata filtering, and easier deployment in real systems.
+
+The researchers still use FAISS for quick offline experiments, but production search uses Qdrant.
+
+Document Chunking Notes
+
+The knowledge base is split into chunks before indexing. Chunking is done with paragraph boundaries whenever possible.
+
+If chunks are too small, they lose context. If chunks are too large, the retriever may bring back extra unrelated information.
+
+A balanced chunk size works best when the document contains similar sections with overlapping terminology.
+
+Support Escalation Policy
+
+Customer support requests are classified by priority.
+
+A P1 issue means the system is down or many users are affected. The support team must respond within 15 minutes.
+
+A P2 issue is important but not completely blocking. The target response time is one hour.
+
+A P3 issue is a normal bug or question that can be handled during the business day.
+
+Billing Policy
+
+Invoices are generated at the end of each month. Customers who pay annually receive a discount, while monthly customers are billed at the start of each cycle.
+
+If a payment fails, the account enters a grace period before service is restricted.
+
+Billing questions are handled by the finance support queue, not by technical support.
+
+Security Rules
+
+All employees must enable multi-factor authentication on company accounts.
+
+Passwords must contain at least 12 characters and include uppercase letters, lowercase letters, numbers, and special characters.
+
+Passwords expire every 180 days. Sharing credentials with another employee is treated as a serious security violation.
+
+Incident Response
+
+When a production incident occurs, the incident lead opens a bridge call, assigns owners, and starts a timeline log.
+
+The first focus is containment. The second focus is root cause analysis. The last step is writing a postmortem with corrective actions.
+
+Security incidents follow the same general process, but they require additional approvals and stricter logging.
+
+NovaAssist Product
+
+OrionForge created an AI assistant called NovaAssist. NovaAssist helps employees find answers from internal documents.
+
+The first release sometimes gave poor answers because the retrieved chunks were close in meaning but not precise enough. The language model was not the main problem. The retrieval stage was the weak point.
+
+The team fixed this by adding a reranking step before generation.
+
+Evaluation Metrics
+
+The OrionForge team measures retrieval using recall, precision, and mean reciprocal rank.
+
+Language model quality is measured using factual correctness, completeness, and response usefulness.
+
+The team found that better retrieval scores usually lead to better final answers, especially when the documents contain similar wording.
+
+Future Plans
+
+The research team plans to improve OrionSearch using smaller specialized models, better rerankers, and domain-specific embeddings.
+
+The long-term goal is faster search, fewer incorrect answers, and better handling of ambiguous queries.
+
+Distinguishing Note
+
+Some ranking systems are unrelated to search. Sports rankings, school rankings, and sales leaderboards all use the word ranking, but they are not rerankers.
+
+A search reranker is specifically used to reorder retrieved text passages so the most relevant one is placed first.
