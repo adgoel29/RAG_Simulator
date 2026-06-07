@@ -1,4 +1,15 @@
 from loadfile import fileload
+import logging
+
+
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # UPDATED IMPORTS
 from langchain_text_splitters import (
@@ -26,53 +37,83 @@ class chunk:
         chunk_size=500,
         chunk_overlap=50
     ):
+        try:
 
-        if sep_value is not None:
-            splitter = CharacterTextSplitter(
-                separator=sep_value,
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap
-            )
+            if sep_value is not None:
+                splitter = CharacterTextSplitter(
+                    separator=sep_value,
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap
+                )
 
-        if separate_keywords == "character":
-            splitter = CharacterTextSplitter(
-                separator="",
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap
-            )
+            if separate_keywords == "character":
+                splitter = CharacterTextSplitter(
+                    separator="",
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap
+                )
 
-        elif separate_keywords == "token":
-            splitter = TokenTextSplitter(
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap
-            )
+            elif separate_keywords == "token":
+                splitter = TokenTextSplitter(
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap
+                )
 
-        elif separate_keywords == "paragraph":
-            splitter = CharacterTextSplitter(
-                separator="\n\n",
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap
-            )
+            elif separate_keywords == "paragraph":
+                splitter = CharacterTextSplitter(
+                    separator="\n\n",
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap
+                )
 
-        else:
-            splitter = RecursiveCharacterTextSplitter(
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap
-            )
+            elif separate_keywords == "recursive":
 
-        return splitter.split_text(content)
+                splitter = RecursiveCharacterTextSplitter(
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap
+                )
+
+            else:
+                raise ValueError(
+                    f"Unknown splitter {separate_keywords}"
+                )
+            
+            chunker=splitter.split_text(content)
+            if not chunker:
+                raise ValueError("Chunking failed. No chunks created.")
+            
+            logger.info(
+            f"Created {len(chunker)} chunks"
+        )
+            return chunker
+        
+        except Exception as e:
+            logger.exception(
+            f"Unexpected chunking failure{e}"
+        )
+            return []
 
     def semantic_chunking(self, content):
 
-        chunker = SemanticChunker(
-            embeddings=self.embeddings,
-            breakpoint_threshold_type="percentile",
-            breakpoint_threshold_amount=90
+        try:
+
+            chunker = SemanticChunker(
+                embeddings=self.embeddings,
+                breakpoint_threshold_type="percentile",
+                breakpoint_threshold_amount=90
+            )
+
+            chunks = chunker.split_text(content)
+            if not chunks:
+                raise ValueError("Chunking failed. No chunks created.")
+            logger.info(
+            f"Created {len(chunks)} semantic chunks"
         )
-
-        chunks = chunker.split_text(content)
-
-        return chunks
+            return chunks
+        
+        except Exception as e:
+            print(f"Error in semantic chunking: {e}")
+            return []
 
 
 if __name__ == "__main__":
