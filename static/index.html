@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Interactive RAG Simulator dashboard to visualize chunking, vector embedding, similarity search, MMR, and cross-encoder reranking.">
+    <title>RAG Pipeline Simulator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="header-logo">
+                    <span class="logo-icon">⚡</span>
+                    <h1>RAG Simulator</h1>
+                </div>
+                <p class="header-subtitle">Interactive visualizer for the Retrieval-Augmented Generation pipeline</p>
+            </div>
+            <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">
+                <span class="theme-toggle-icon" id="theme-icon">🌙</span>
+                <span id="theme-label">Dark mode</span>
+            </button>
+        </header>
+
+        <!-- Pipeline Progress Tracker -->
+        <section class="pipeline-tracker" aria-label="Pipeline Progress">
+            <div class="tracker-step active" id="step-doc">
+                <div class="step-num">1</div>
+                <div class="step-label">Document Input</div>
+            </div>
+            <div class="tracker-connector" id="conn-1"></div>
+            <div class="tracker-step" id="step-chunk">
+                <div class="step-num">2</div>
+                <div class="step-label">Text Chunking</div>
+            </div>
+            <div class="tracker-connector" id="conn-2"></div>
+            <div class="tracker-step" id="step-embed">
+                <div class="step-num">3</div>
+                <div class="step-label">Vector Embedding</div>
+            </div>
+            <div class="tracker-connector" id="conn-3"></div>
+            <div class="tracker-step" id="step-faiss">
+                <div class="step-num">4</div>
+                <div class="step-label">FAISS Index</div>
+            </div>
+            <div class="tracker-connector" id="conn-4"></div>
+            <div class="tracker-step" id="step-retrieve">
+                <div class="step-num">5</div>
+                <div class="step-label">Retrieval</div>
+            </div>
+            <div class="tracker-connector" id="conn-5"></div>
+            <div class="tracker-step" id="step-rerank">
+                <div class="step-num">6</div>
+                <div class="step-label">Reranking</div>
+            </div>
+        </section>
+
+        <!-- Dashboard Main Grid -->
+        <main class="dashboard-grid">
+            <!-- Left Side: Control Center -->
+            <section class="control-panel" aria-labelledby="settings-heading">
+                <h2 id="settings-heading">Control Center</h2>
+
+                <!-- Input Text Selection -->
+                <div class="panel-section">
+                    <label for="doc-selector" class="field-label">Select Preset Text</label>
+                    <select id="doc-selector">
+                        <option value="custom">-- Custom Text (Write or upload below) --</option>
+                        <option value="rag_intro">What is Retrieval-Augmented Generation?</option>
+                        <option value="faiss_info">FAISS & Vector Databases</option>
+                        <option value="ml_ai">AI vs. Machine Learning</option>
+                    </select>
+                </div>
+
+                <!-- Textarea and Upload File -->
+                <div class="panel-section">
+                    <div class="field-label">
+                        <span>Document Text</span>
+                        <div class="upload-btn-wrapper">
+                            <label class="file-upload-btn">
+                                📂 Import File (.txt, .md)
+                                <input type="file" id="file-uploader" accept=".txt,.md" />
+                            </label>
+                        </div>
+                    </div>
+                    <textarea id="document-text"
+                        placeholder="Type or paste your document text here to begin simulating the RAG pipeline..."></textarea>
+                </div>
+
+                <!-- Chunking Settings -->
+                <div class="panel-section card-inner-glass">
+                    <h3>Chunking Settings</h3>
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="chunk-method" class="field-label">Method</label>
+                            <select id="chunk-method">
+                                <option value="fixed">Fixed Splitting</option>
+                                <option value="semantic">Semantic Splitting</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="fixed-params-group">
+                        <div class="form-row">
+                            <div class="form-col">
+                                <label for="chunk-size" class="field-label">Chunk Size (chars)</label>
+                                <input type="number" id="chunk-size" value="300" min="50" max="2000">
+                            </div>
+                            <div class="form-col">
+                                <label for="chunk-overlap" class="field-label">Overlap (chars)</label>
+                                <input type="number" id="chunk-overlap" value="30" min="0" max="500">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-col">
+                                <label for="sep-keyword" class="field-label">Separate By</label>
+                                <select id="sep-keyword">
+                                    <option value="recursive">Recursive Character</option>
+                                    <option value="character">Character</option>
+                                    <option value="token">Token</option>
+                                    <option value="paragraph">Paragraph</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="btn-chunk" class="btn btn-primary btn-glow">1. Chunk Document</button>
+                </div>
+
+                <!-- Vector Store & Embedding Settings -->
+                <div class="panel-section card-inner-glass">
+                    <h3>
+                        Vector Store & Embeddings
+                        <span id="chunks-ready-count" class="status-pill">0 Chunks</span>
+                    </h3>
+                    <div class="info-row">
+                        <span class="info-label">Model:</span>
+                        <span class="info-value">all-MiniLM-L6-v2</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Vector Store:</span>
+                        <span class="info-value">FAISS (CPU)</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Index Status:</span>
+                        <span id="index-status" class="status-pill">Not Built</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Indexed Vectors:</span>
+                        <span id="vectors-indexed" class="meta-value">-</span>
+                    </div>
+                    <button id="btn-ingest" class="btn btn-secondary" disabled>2. Embed & Ingest</button>
+                </div>
+
+                <!-- Search & Reranking Settings -->
+                <div class="panel-section card-inner-glass">
+                    <h3>Search & Reranking</h3>
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="query-input" class="field-label">Search Query</label>
+                            <input type="text" id="query-input" placeholder="e.g., What is FAISS?" disabled>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="search-method" class="field-label">Search Method</label>
+                            <select id="search-method" disabled>
+                                <option value="similarity">Similarity Search</option>
+                                <option value="mmr">Max Marginal Relevance (MMR)</option>
+                            </select>
+                        </div>
+                        <div class="form-col">
+                            <label for="top-k" class="field-label">Top K</label>
+                            <input type="number" id="top-k" value="5" min="1" max="10" disabled>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-col">
+                            <label for="rerank-model" class="field-label">Reranker Model</label>
+                            <select id="rerank-model" disabled>
+                                <option value="cross-encoder/ms-marco-MiniLM-L-6-v2">ms-marco-MiniLM-L-6-v2</option>
+                                <option value="cross-encoder/ms-marco-MiniLM-L-2-v2">ms-marco-MiniLM-L-2-v2</option>
+                                <option value="cross-encoder/ms-marco-TinyBERT-L-2-v2">ms-marco-TinyBERT-L-2-v2</option>
+                            </select>
+                        </div>
+                        <div class="form-col">
+                            <label for="rerank-top-k" class="field-label">Rerank Top K</label>
+                            <input type="number" id="rerank-top-k" value="3" min="1" max="10" disabled>
+                        </div>
+                    </div>
+                    <button id="btn-query" class="btn btn-secondary" disabled>3. Retrieve & Rerank</button>
+                </div>
+            </section>
+
+            <!-- Right Side: Workspace Visualizer -->
+            <section class="workspace-panel" id="results-section" aria-label="Pipeline Workspace">
+                <!-- Tab Headers -->
+                <div class="tabs-header">
+                    <button class="tab-btn active" id="tab-chunks" data-target="panel-chunks-view">
+                        📁 Generated Chunks <span class="badge" id="chunks-badge">0</span>
+                    </button>
+                    <button class="tab-btn" id="tab-vectors" data-target="panel-vectors-view">
+                        🧬 Vector Inspector
+                    </button>
+                    <button class="tab-btn" id="tab-results" data-target="panel-results-view">
+                        🎯 Retrieval & Rerank Trace
+                    </button>
+                </div>
+
+                <!-- Tab Content Panels -->
+                <div class="tab-content">
+                    <!-- Panel 1: Chunks View -->
+                    <div class="tab-panel active-panel" id="panel-chunks-view">
+                        <div class="panel-placeholder" id="placeholder-chunks">
+                            <span class="placeholder-icon">📄</span>
+                            <p>Paste text in the Control Center or import a file and click <strong>Chunk Document</strong> to view split chunks.</p>
+                        </div>
+                        <div class="chunks-list" id="chunks-list-container"></div>
+                    </div>
+
+                    <!-- Panel 2: Vectors View -->
+                    <div class="tab-panel" id="panel-vectors-view">
+                        <div class="panel-placeholder" id="placeholder-vectors">
+                            <span class="placeholder-icon">🧬</span>
+                            <p>Ingest the chunks into the vector store to inspect their high-dimensional vector representations.</p>
+                        </div>
+                        <div class="vectors-list" id="vectors-list-container"></div>
+                    </div>
+
+                    <!-- Panel 3: Results View & Trace -->
+                    <div class="tab-panel" id="panel-results-view">
+                        <div class="panel-placeholder" id="placeholder-results">
+                            <span class="placeholder-icon">🎯</span>
+                            <p>Run <strong>Retrieve & Rerank</strong> to visualize the search results before and after Cross-Encoder reranking.</p>
+                        </div>
+
+                        <div class="results-visualizer-layout" id="results-visualizer-container" style="display: none;">
+                            <div class="query-echo-bar">
+                                <span class="echo-label">Active Query:</span>
+                                <span class="echo-query" id="active-query-text">"..."</span>
+                            </div>
+
+                            <div class="comparison-grid">
+                                <!-- Column 1: Similarity Search -->
+                                <div class="comparison-column">
+                                    <div class="column-header">
+                                        <h4>Similarity Search Retrieval</h4>
+                                        <p class="col-desc">Dense index lookup based on L2 distance / similarity score</p>
+                                    </div>
+                                    <div class="results-column-list" id="retrieved-list"></div>
+                                </div>
+
+                                <!-- Column 2: Reranked -->
+                                <div class="comparison-column">
+                                    <div class="column-header">
+                                        <h4>Cross-Encoder Reranking</h4>
+                                        <p class="col-desc">Fine-tuned model evaluating exact query-chunk semantic pairs</p>
+                                    </div>
+                                    <div class="results-column-list" id="reranked-list"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loading-overlay" style="display: none;">
+            <div class="loader-content">
+                <div class="spinner"></div>
+                <p id="loader-message">Processing pipeline...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+
+</html>
