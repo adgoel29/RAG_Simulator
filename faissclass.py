@@ -136,9 +136,9 @@ class RagClass:
             return []
         
         
-    def rerank(self,query,docs,topk=3,model_name=None):
-        if not query or not docs or not model_name:
-            raise ValueError("query,docs and model_name are required")
+    def rerank(self,query,docs,topk=3,model_name="cross-encoder/ms-marco-MiniLM-L-6-v2"):
+        if not query or not docs :
+            raise ValueError("query,docs are required")
         obj=Reranker(model_name=model_name)
         reranked_docs=obj.reranking_docs(docs,query,topk)
         return reranked_docs
