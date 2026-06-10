@@ -10,3 +10,4 @@ venv/
 
 # VS Code optional
 .vscode/
+qdrant_storage/
