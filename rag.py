@@ -13,31 +13,36 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 class RagClass:
-    def __init__(self, model_name, backend="faiss", **kwargs):
+    def __init__(self, model_name):
         try:
             self.embeddings = HuggingFaceEmbeddings(model_name=model_name)
             self.tochunk = chunk(self.embeddings)
-
-            if backend == "faiss":
-                self.backend = FAISSBackend(self.embeddings)
-            elif backend == "qdrant":
-                self.backend = QdrantBackend(self.embeddings, **kwargs)
-            else:
-                raise ValueError(f"Unknown backend '{backend}'. Choose faiss or qdrant.")
-
-            logger.info(f"RAG initialized with backend='{backend}'")
+            self._backends = {}
+            logger.info("RAG initialized successfully")
         except Exception as e:
             logger.exception(f"RAG init failed: {e}")
             raise
 
-    def ingest(self, chunks):
+    def get_backend(self, backend_name: str):
+        backend_name = backend_name.lower()
+        if backend_name not in self._backends:
+            if backend_name == "faiss":
+                self._backends["faiss"] = FAISSBackend(self.embeddings)
+            elif backend_name == "qdrant":
+                self._backends["qdrant"] = QdrantBackend(self.embeddings)
+            else:
+                raise ValueError(f"Unknown backend '{backend_name}'. Choose faiss or qdrant.")
+        return self._backends[backend_name]
+
+    def ingest(self, chunks, backend_name="faiss"):
         try:
             if not chunks:
                 raise ValueError("No chunks provided")
             if not isinstance(chunks, list):
                 raise TypeError("Chunks must be a list")
-            self.backend.build_index(chunks)
-            logger.info(f"Ingested {len(chunks)} chunks")
+            backend = self.get_backend(backend_name)
+            backend.build_index(chunks)
+            logger.info(f"Ingested {len(chunks)} chunks into {backend_name}")
         except (ValueError, TypeError):
             logger.exception("Invalid ingestion input")
             raise
@@ -45,14 +50,15 @@ class RagClass:
             logger.exception(f"Ingestion failed: {e}")
             raise
 
-    def searching(self, query, method="similarity", topk=5):
+    def searching(self, query, method="similarity", topk=5, backend_name="faiss"):
         try:
             if not query:
                 raise ValueError("Empty query")
             if topk <= 0:
                 raise ValueError("topk must be > 0")
-            logger.info(f"Searching query='{query}' method='{method}' topk={topk}")
-            docs = self.backend.search(query, method, topk)
+            logger.info(f"Searching query='{query}' method='{method}' topk={topk} using backend={backend_name}")
+            backend = self.get_backend(backend_name)
+            docs = backend.search(query, method, topk)
             if not docs:
                 logger.warning("No documents retrieved")
                 return []

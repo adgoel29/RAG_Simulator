@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel,Field 
 from typing import List, Dict, Any, Optional
 class ChunkMetadata(BaseModel):
     chunk_id: int
@@ -23,3 +23,11 @@ class ChunkTrace(BaseModel):
     retrieval: Optional[RetrievalMetadata] = None
     reranker: Optional[RerankerMetadata] = None
     extra: Dict[str, Any] = Field(default_factory=dict)
+class F_to_B(BaseModel):
+    chunk_id:int
+    chunk:str
+    embedding_method:str
+    vector_store:str
+    embedding:List[float] = Field(default_factory=list)
+    before_reranker:Optional[Dict[str,Any]]=None
+    after_reranker:Optional[Dict[str,Any]]=None
