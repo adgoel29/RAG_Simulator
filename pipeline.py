@@ -1,37 +1,102 @@
-# from faissclass import RagClass
-# # from chunking import chunking
-# from sentence_transformers import SentenceTransformer
-# from search import SearchEngine
-# from reranker import Reranker
-# path="re_ranktest.txt"
-# model = SentenceTransformer("all-MiniLM-L6-v2")
-# test=RagClass("all-MiniLM-L6-v2")
-# #semantic or fixed,parameters of fixed are changeable
-# chunk=test.chunking(path,"fixed")
-# # print(chunk)
-# test.ingest(chunk)
-# query = input("Enter query: ")
-# #mmr or similarity ,default is similarity,can  use top_k as well.
-# docs= test.searching(query,"similarity",5)
-# print(docs)
-# model_name="cross-encoder/ms-marco-MiniLM-L-6-v2"
-# reranker_instance=Reranker(model_name)
-# reranked_docs=reranker_instance.reranking_docs(docs,query,topk=3)
-# print(reranked_docs)
-from rag import RagClass
+from rag import RagClass   # change name according to your file
 
-# rag = RagClass("all-MiniLM-L6-v2", backend="faiss")
-# rag = RagClass("all-MiniLM-L6-v2", backend="qdrant", mode="memory")
-rag = RagClass("all-MiniLM-L6-v2", backend="qdrant", mode="server", url="http://localhost:6333")
 
-chunks = rag.chunking("re_ranktest.txt", "fixed")
-rag.ingest(chunks)
+# -------------------------
+# CONFIG
+# -------------------------
 
-query = input("Enter query: ")
+MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
-docs = rag.searching(query, "similarity")
-# docs = rag.searching(query, "mmr")
-# docs = rag.searching(query, "bm25")    # qdrant only, needs: pip install fastembed
+BACKEND = "qdrant"
 
-print(docs)
-print(rag.rerank(query, docs, topk=3))
+FILE_PATH = "/home/aditya/Desktop/RAG_Simulator/chemistry project.docx"
+
+CHUNK_METHOD = "semantic"
+
+
+# -------------------------
+# INITIALIZE RAG
+# -------------------------
+
+rag = RagClass(
+    model_name=MODEL_NAME
+)
+
+
+# -------------------------
+# INGESTION PIPELINE
+# -------------------------
+
+print("Creating chunks...")
+
+chunks = rag.chunking(
+    path=FILE_PATH,
+    method=CHUNK_METHOD
+)
+
+
+print(f"Chunks created: {len(chunks)}")
+
+
+print("Adding chunks to Qdrant...")
+
+rag.ingest(
+    chunks,
+    backend_name=BACKEND
+)
+
+
+print("Ingestion complete")
+
+
+# -------------------------
+# QUERY PIPELINE
+# -------------------------
+
+while True:
+
+    query = input("\nEnter query: ")
+
+    if query.lower() in ["exit", "quit"]:
+        break
+
+
+    # Retrieve from Qdrant
+
+    retrieved_docs = rag.searching(
+        query=query,
+        method="similarity",
+        topk=5,
+        backend_name=BACKEND
+    )
+
+
+    if not retrieved_docs:
+        print("No documents found")
+        continue
+
+
+    print("\nRetrieved docs:")
+    print("-" * 50)
+
+    for doc in retrieved_docs:
+        print(doc[:300])
+        print()
+
+
+
+    # Reranking
+
+    reranked_docs = rag.rerank(
+        query=query,
+        docs=retrieved_docs,
+        topk=3
+    )
+
+
+    print("\nAfter reranking:")
+    print("-" * 50)
+
+    for i, doc in enumerate(reranked_docs, 1):
+        print(f"\nResult {i}")
+        print(doc)
