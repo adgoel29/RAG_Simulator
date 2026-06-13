@@ -1,6 +1,7 @@
 from langchain_huggingface import HuggingFaceEmbeddings
 from Faiss.faiss_backend import FAISSBackend
 from Qdrant.qdrant_backend import QdrantBackend
+from loadfile import get_content
 from chunking import chunk
 from reranker import Reranker
 import logging
@@ -72,8 +73,11 @@ class RagClass:
 
     def chunking(self, path, method, **kwargs):
         try:
-            with open(path, 'r', encoding="utf-8") as f:
-                content = f.read()
+            # with open(path, 'r', encoding="utf-8") as f:
+            #     content = f.read()
+            content = get_content(path)
+            logger.info(f"Content type: {type(content)} ")
+            # print(f"Content {content[:100]}...")
             if not content:
                 raise ValueError("File is empty")
             if not isinstance(content, str):
