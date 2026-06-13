@@ -7,3 +7,6 @@ langchain_community
 langchain-experimental
 langchain-text-splitters
 langchain-qdrant
+fastapi
+uvicorn
+pydantic
