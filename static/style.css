@@ -1036,3 +1036,13 @@ textarea:disabled {
         display: none;
     }
 }
+
+/* Vector Store selector enhancements */
+#vector-store-select {
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+#vector-store-select:hover:not(:disabled) {
+    border-color: var(--accent);
+}

@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from faissclass import RagClass
+from rag import RagClass
 from reranker import Reranker
 from frontend_from_backend import F_to_B
 
@@ -44,6 +44,7 @@ class QueryRequest(BaseModel):
     topk: int = 5
     reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     rerank_topk: int = 3
+    backend: str = "faiss"
 
 @app.post("/api/chunk")
 def api_chunk(req: ChunkRequest):
@@ -78,7 +79,7 @@ def api_chunk(req: ChunkRequest):
             os.remove(temp_path)
 
 @app.post("/api/ingest", response_model=List[F_to_B])
-def api_ingest():
+def api_ingest(backend: str = "faiss"):
     global chunks_cache, embeddings_cache
     if not chunks_cache:
         raise HTTPException(status_code=400, detail="No chunks available to ingest. Please run chunking first.")
@@ -87,7 +88,7 @@ def api_ingest():
         embeddings = rag_instance.embeddings.embed_documents(chunks_cache)
         embeddings_cache = embeddings
         
-        rag_instance.ingest(chunks_cache)
+        rag_instance.ingest(chunks_cache, backend_name=backend)
         
         response_data = []
         for idx, (chunk_text, emb) in enumerate(zip(chunks_cache, embeddings_cache)):
@@ -95,7 +96,7 @@ def api_ingest():
                 chunk_id=idx,
                 chunk=chunk_text,
                 embedding_method=DEFAULT_MODEL,
-                vector_store="FAISS",
+                vector_store=backend.upper(),
                 embedding=emb,
                 before_reranker=None,
                 after_reranker=None
@@ -108,21 +109,20 @@ def api_ingest():
 @app.post("/api/query", response_model=List[F_to_B])
 def api_query(req: QueryRequest):
     global chunks_cache, embeddings_cache
-    if not chunks_cache or rag_instance.vectorstore is None:
-        raise HTTPException(status_code=400, detail="Vector store not initialized. Please ingest chunks first.")
+    
+    try:
+        backend = rag_instance.get_backend(req.backend)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+        
+    if not chunks_cache or backend.vectorstore is None:
+        raise HTTPException(status_code=400, detail=f"Vector store '{req.backend}' not initialized. Please ingest chunks first.")
     if not req.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty")
         
     try:
-        docs_with_scores = []
-        if req.method == "similarity":
-            docs_with_scores = rag_instance.vectorstore.similarity_search_with_score(req.query, k=req.topk)
-        elif req.method == "mmr":
-            docs = rag_instance.vectorstore.max_marginal_relevance_search(req.query, k=req.topk)
-            docs_with_scores = [(doc, float(req.topk - idx)) for idx, doc in enumerate(docs)]
-        else:
-            docs = rag_instance.vectorstore.similarity_search(req.query, k=req.topk)
-            docs_with_scores = [(doc, float(req.topk - idx)) for idx, doc in enumerate(docs)]
+        docs = backend.search(req.query, req.method, req.topk)
+        docs_with_scores = [(doc, float(req.topk - i)) for i, doc in enumerate(docs)]
             
         retrieved_map = {}
         for rank, (doc, score) in enumerate(docs_with_scores):
@@ -173,7 +173,7 @@ def api_query(req: QueryRequest):
                 chunk_id=idx,
                 chunk=chunk_text,
                 embedding_method=DEFAULT_MODEL,
-                vector_store="FAISS",
+                vector_store=req.backend.upper(),
                 embedding=emb,
                 before_reranker=before,
                 after_reranker=after

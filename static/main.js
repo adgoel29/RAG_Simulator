@@ -17,6 +17,7 @@ const fixedParamsGroup = document.getElementById("fixed-params-group");
 const chunkSizeInput = document.getElementById("chunk-size");
 const chunkOverlapInput = document.getElementById("chunk-overlap");
 const sepKeywordSelect = document.getElementById("sep-keyword");
+const vectorStoreSelect = document.getElementById("vector-store-select");
 
 const btnChunk = document.getElementById("btn-chunk");
 const btnIngest = document.getElementById("btn-ingest");
@@ -88,6 +89,14 @@ document.addEventListener("DOMContentLoaded", () => {
     btnChunk.addEventListener("click", runChunking);
     btnIngest.addEventListener("click", runIngestion);
     btnQuery.addEventListener("click", runQuery);
+
+    vectorStoreSelect.addEventListener("change", () => {
+        updateStepLabel();
+        updateSearchMethods();
+        resetVectorStoreIndex();
+    });
+    updateStepLabel();
+    updateSearchMethods();
 
     // Setup tabs listeners
     tabBtns.forEach(btn => {
@@ -182,6 +191,66 @@ function resetProgress() {
     vectorsIndexed.textContent = "-";
 }
 
+function resetVectorStoreIndex() {
+    ["step-embed", "step-faiss", "step-retrieve", "step-rerank"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.className = "tracker-step";
+    });
+    ["conn-2", "conn-3", "conn-4", "conn-5"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.className = "tracker-connector";
+    });
+
+    const stepChunk = document.getElementById("step-chunk");
+    if (stepChunk) {
+        stepChunk.className = "tracker-step active";
+    }
+
+    appState.ingestedChunks = [];
+    appState.queryResults = [];
+
+    vectorsListContainer.innerHTML = "";
+    vectorsListContainer.style.display = "none";
+    document.getElementById("placeholder-vectors").style.display = "flex";
+
+    document.getElementById("results-visualizer-container").style.display = "none";
+    document.getElementById("placeholder-results").style.display = "flex";
+
+    btnQuery.disabled = true;
+    [queryInput, searchMethodSel, topKInput, rerankModelSel, rerankTopKInput].forEach(el => el.disabled = true);
+
+    indexStatus.textContent = "Not Built";
+    indexStatus.classList.remove("ready");
+    vectorsIndexed.textContent = "-";
+}
+
+function updateStepLabel() {
+    const stepFaissLabel = document.querySelector("#step-faiss .step-label");
+    if (stepFaissLabel) {
+        if (vectorStoreSelect.value === "qdrant") {
+            stepFaissLabel.textContent = "Qdrant Index";
+        } else {
+            stepFaissLabel.textContent = "FAISS Index";
+        }
+    }
+}
+
+function updateSearchMethods() {
+    const bm25Option = document.getElementById("option-bm25");
+    if (!bm25Option) return;
+
+    if (vectorStoreSelect.value === "qdrant") {
+        bm25Option.disabled = false;
+        bm25Option.style.display = "block";
+    } else {
+        bm25Option.disabled = true;
+        bm25Option.style.display = "none";
+        if (searchMethodSel.value === "bm25") {
+            searchMethodSel.value = "similarity";
+        }
+    }
+}
+
 function completeStep(stepId, connId, nextStepId) {
     const s = document.getElementById(stepId);
     if (s) { s.classList.remove("active"); s.classList.add("done"); }
@@ -264,10 +333,12 @@ function renderChunks(chunks) {
 // ── Ingestion ─────────────────────────────────────────────────────────────────
 async function runIngestion() {
     if (!appState.chunks.length) return;
-    showLoader("Generating embeddings & building FAISS index…");
+    const backend = vectorStoreSelect.value;
+    const backendName = backend === "qdrant" ? "Qdrant" : "FAISS";
+    showLoader(`Generating embeddings & building ${backendName} index…`);
 
     try {
-        const res = await fetch("/api/ingest", { method: "POST" });
+        const res = await fetch(`/api/ingest?backend=${backend}`, { method: "POST" });
         if (!res.ok) { const e = await res.json(); throw new Error(e.detail || "Ingestion failed."); }
 
         const data = await res.json();
@@ -379,7 +450,8 @@ async function runQuery() {
         method: searchMethodSel.value,
         topk: parseInt(topKInput.value),
         reranker_model: rerankModelSel.value,
-        rerank_topk: parseInt(rerankTopKInput.value)
+        rerank_topk: parseInt(rerankTopKInput.value),
+        backend: vectorStoreSelect.value
     };
 
     try {

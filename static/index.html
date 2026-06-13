@@ -9,7 +9,9 @@
     <title>RAG Pipeline Simulator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -145,9 +147,14 @@
                         <span class="info-label">Model:</span>
                         <span class="info-value">all-MiniLM-L6-v2</span>
                     </div>
-                    <div class="info-row">
-                        <span class="info-label">Vector Store:</span>
-                        <span class="info-value">FAISS (CPU)</span>
+                    <div class="form-row" style="margin-top: 8px; margin-bottom: 8px;">
+                        <div class="form-col">
+                            <label for="vector-store-select" class="field-label">Vector Store</label>
+                            <select id="vector-store-select">
+                                <option value="faiss">FAISS</option>
+                                <option value="qdrant">Qdrant</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="info-row">
                         <span class="info-label">Index Status:</span>
@@ -221,7 +228,8 @@
                     <div class="tab-panel active-panel" id="panel-chunks-view">
                         <div class="panel-placeholder" id="placeholder-chunks">
                             <span class="placeholder-icon">📄</span>
-                            <p>Paste text in the Control Center or import a file and click <strong>Chunk Document</strong> to view split chunks.</p>
+                            <p>Paste text in the Control Center or import a file and click <strong>Chunk
+                                    Document</strong> to view split chunks.</p>
                         </div>
                         <div class="chunks-list" id="chunks-list-container"></div>
                     </div>
@@ -230,7 +238,8 @@
                     <div class="tab-panel" id="panel-vectors-view">
                         <div class="panel-placeholder" id="placeholder-vectors">
                             <span class="placeholder-icon">🧬</span>
-                            <p>Ingest the chunks into the vector store to inspect their high-dimensional vector representations.</p>
+                            <p>Ingest the chunks into the vector store to inspect their high-dimensional vector
+                                representations.</p>
                         </div>
                         <div class="vectors-list" id="vectors-list-container"></div>
                     </div>
@@ -239,7 +248,8 @@
                     <div class="tab-panel" id="panel-results-view">
                         <div class="panel-placeholder" id="placeholder-results">
                             <span class="placeholder-icon">🎯</span>
-                            <p>Run <strong>Retrieve & Rerank</strong> to visualize the search results before and after Cross-Encoder reranking.</p>
+                            <p>Run <strong>Retrieve & Rerank</strong> to visualize the search results before and after
+                                Cross-Encoder reranking.</p>
                         </div>
 
                         <div class="results-visualizer-layout" id="results-visualizer-container" style="display: none;">
@@ -253,7 +263,8 @@
                                 <div class="comparison-column">
                                     <div class="column-header">
                                         <h4>Similarity Search Retrieval</h4>
-                                        <p class="col-desc">Dense index lookup based on L2 distance / similarity score</p>
+                                        <p class="col-desc">Dense index lookup based on L2 distance / similarity score
+                                        </p>
                                     </div>
                                     <div class="results-column-list" id="retrieved-list"></div>
                                 </div>
@@ -262,7 +273,8 @@
                                 <div class="comparison-column">
                                     <div class="column-header">
                                         <h4>Cross-Encoder Reranking</h4>
-                                        <p class="col-desc">Fine-tuned model evaluating exact query-chunk semantic pairs</p>
+                                        <p class="col-desc">Fine-tuned model evaluating exact query-chunk semantic pairs
+                                        </p>
                                     </div>
                                     <div class="results-column-list" id="reranked-list"></div>
                                 </div>
