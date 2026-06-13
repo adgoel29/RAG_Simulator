@@ -10,3 +10,7 @@ langchain-qdrant
 fastapi
 uvicorn
 pydantic
+pandas 
+pypdf 
+python-docx 
+pdfplumber
