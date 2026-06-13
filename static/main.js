@@ -113,18 +113,24 @@ function handleDocSelect() {
     resetProgress();
 }
 
-function handleFileUpload(e) {
-    const file = e.target.files[0];
-    if (!file) return;
+async function uploadFileToBackend(file) {
+    const formData = new FormData();
+    formData.append("file", file);
 
-    const reader = new FileReader();
-    reader.onload = function (evt) {
-        docTextarea.value = evt.target.result;
-        docSelector.value = "custom";
-        resetProgress();
-    };
-    reader.readAsText(file);
+    const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData
+    });
+
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || "File upload failed");
+    }
+
+    const data = await res.json();
+    return data.content;
 }
+
 
 // ── Tabs Switching ───────────────────────────────────────────────────────────
 function switchTab(targetId) {

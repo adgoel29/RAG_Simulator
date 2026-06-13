@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from rag import RagClass
 from reranker import Reranker
 from frontend_from_backend import F_to_B
+from loadfile import get_content
 
 app = FastAPI(
     title="RAG Simulator API",
@@ -77,6 +78,28 @@ def api_chunk(req: ChunkRequest):
     finally:
         if os.path.exists(temp_path):
             os.remove(temp_path)
+
+@app.post("/api/upload")
+async def api_upload(file: UploadFile = File(...)):
+    temp_dir = "temp_uploads"
+    if not os.path.exists(temp_dir):
+        os.makedirs(temp_dir)
+    
+    file_path = os.path.join(temp_dir, file.filename)
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        content = get_content(file_path)
+        return {"filename": file.filename, "content": content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to process file: {str(e)}")
+    finally:
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception:
+                pass
 
 @app.post("/api/ingest", response_model=List[F_to_B])
 def api_ingest(backend: str = "faiss"):
