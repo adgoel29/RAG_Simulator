@@ -1,6 +1,6 @@
 from langchain_huggingface import HuggingFaceEmbeddings
-from faiss_backend import FAISSBackend
-from qdrant_backend import QdrantBackend
+from Faiss.faiss_backend import FAISSBackend
+from Qdrant.qdrant_backend import QdrantBackend
 from chunking import chunk
 from reranker import Reranker
 import logging
